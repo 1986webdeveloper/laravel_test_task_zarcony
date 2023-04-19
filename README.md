@@ -18,6 +18,6 @@ cp .env.example .env
 php artisan migrate
 
 6. import below postman collection in workplace
-https://www.getpostman.com/collections/d54443ef388697b89fd9
+https://api.postman.com/collections/26990093-511f8ebd-850c-089a-4f9b-dc44d5d8d984?access_key=PMAT-01GYCNQAD70K9S7J74PWQDCEXD
 
 7. Change URL of Postman collection at your will to run in your end.
