@@ -7,10 +7,11 @@ use Illuminate\Support\Facades\Validator;
 use App\Models\Pizza_items;
 use App\Models\Pizza_attribute;
 use DB;
+use Illuminate\Http\JsonResponse;
 
 class PizzaController extends Controller
 {
-	public function insert(Request $request) {
+	public function insert(Request $request): JsonResponse {
 		try{
 			$input = $request->all();
 			$validator = Validator::make($input,['name'=>'required']);
@@ -23,10 +24,13 @@ class PizzaController extends Controller
 				$pizza_id = DB::getPdo()->lastInsertId();
 				if(!empty($input['pizza_attributes'])) {
 					$data = json_decode($input['pizza_attributes'], true);
-					$data = array_map(function($arr) use ($pizza_id) {
-						return ['pizza_id' => $pizza_id] +  $arr;
-					}, $data);
-					Pizza_attribute::insert($data);
+
+					if (is_array($data)) {
+						$data = array_map(function($arr) use ($pizza_id) {
+							return ['pizza_id' => $pizza_id] +  $arr;
+						}, $data);
+						Pizza_attribute::insert($data);
+					}
 				}
 			   return response()->json(["meta" => ["status" => 'success',"message" => 'Pizza added successfully'],"data" => array('pizza_id'=>$pizza_id)], 200);
 			}
@@ -35,7 +39,7 @@ class PizzaController extends Controller
 		}
 	}
 
-	public function update(Request $request) {
+	public function update(Request $request): JsonResponse {
 		try{
 			$input = $request->all();
 			$validator = Validator::make($input,['pizza_id'=>'required','name'=>'required']);
@@ -50,17 +54,20 @@ class PizzaController extends Controller
 					Pizza_items::where('id', $pizza_id)->update(array('name'=>$input['name']));
 					if(!empty($input['pizza_attributes'])) {
 						$pizza_attribute = json_decode($input['pizza_attributes'], true);
-						$pizza_attribute = array_map(function($arr) use ($pizza_id) {
-							return ['pizza_id' => $pizza_id] + $arr;
-						}, $pizza_attribute);
 
-						foreach ($pizza_attribute as $key => $value) {
-							$value['pizza_id'] = $pizza_id;
-							$data = DB::table('pizza_attributes')->where($value)->get()->toArray();
-							if(empty($data)) {
-								Pizza_attribute::insert($value);
-							}else{
-								Pizza_attribute::where('id',$data[0]->id)->update($value);
+						if (is_array($pizza_attribute)) {
+							$pizza_attribute = array_map(function($arr) use ($pizza_id) {
+								return ['pizza_id' => $pizza_id] + $arr;
+							}, $pizza_attribute);
+
+							foreach ($pizza_attribute as $key => $value) {
+								$value['pizza_id'] = $pizza_id;
+								$data = DB::table('pizza_attributes')->where($value)->get()->toArray();
+								if (is_array($data) && count($data) > 0) {
+									Pizza_attribute::where('id',$data[0]->id)->update($value);
+								}else{
+									Pizza_attribute::insert($value);
+								}
 							}
 						}
 					}
@@ -74,7 +81,7 @@ class PizzaController extends Controller
 		}
 	}
 
-	public function delete(Request $request) {
+	public function delete(Request $request): JsonResponse {
 		try{
 			$input = $request->all();
 			$validator = Validator::make($input,['pizza_id'=>'required']);
@@ -92,7 +99,7 @@ class PizzaController extends Controller
 		}
 	}
 
-	public function get(Request $request) {
+	public function get(Request $request): JsonResponse {
 		try{
 			$input = $request->all();
 			$validator = Validator::make($input,['pizza_id'=>'required']);
@@ -114,7 +121,7 @@ class PizzaController extends Controller
 		}
 	}
 
-	public function getList(Request $request) {
+	public function getList(Request $request): JsonResponse {
 		try{
 			$input = $request->all();
 			$pizzadata = new Pizza_items();

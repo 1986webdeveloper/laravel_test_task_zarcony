@@ -8,10 +8,11 @@ use App\Models\Order_master;
 use App\Models\Order_items;
 use App\Models\Pizza_attribute;
 use DB;
+use Illuminate\Http\JsonResponse;
 
 class OrderController extends Controller {
 
-	public function insert(Request $request) {
+	public function insert(Request $request): JsonResponse {
 		try{
 			$input = $request->all();
 			$validator = Validator::make($input,[
@@ -29,37 +30,52 @@ class OrderController extends Controller {
 					$order_items = json_decode($input['order_items'], true);
 					$total_quantity = 0;
 					$total_amount = 0;
-
-					foreach ($order_items as $order_itemsValue) {
-						$pizza = Pizza_attribute::where('id',$order_itemsValue['pizza_attr_id'])->get()->toArray();
-						$total_quantity = $total_quantity + $order_itemsValue['quantity'];
-						$total_amount = $total_amount + ($order_itemsValue['quantity'] * $pizza[0]['price']);
-					}
-
-					$order_data = array(
-						'customer_name' => $input['customer_name'],
-						'customer_address' => $input['customer_address'],
-						'customer_mobile' => $input['customer_mobile'],
-						'total_quantity' => $total_quantity,
-						'total_amount' => $total_amount,
-						'order_status' => 'Pending',
-					);
-
-					Order_master::insert($order_data);
-					$order_id = DB::getPdo()->lastInsertId();
-
-					foreach ($order_items as $order_itemsValue) {
-						$pizza = Pizza_attribute::where('id',$order_itemsValue['pizza_attr_id'])->get()->toArray();
-						$item_data = array(
-							'order_id' => $order_id,
-							'pizza_id' => $order_itemsValue['pizza_id'],
-							'pizza_attr_id' => $order_itemsValue['pizza_attr_id'],
-							'quantity' => $order_itemsValue['quantity'],
-							'amount' => $pizza[0]['price']
+					if (is_array($order_items)) {
+						foreach ($order_items as $order_itemsValue) {
+							$pizza = Pizza_attribute::where('id',$order_itemsValue['pizza_attr_id'])->get()->toArray();
+							$total_quantity = $total_quantity + $order_itemsValue['quantity'];
+							if (is_array($pizza) && count($pizza) > 0) {
+								$pizzaPrice = $pizza[0]['price'];
+							}else{
+								$pizzaPrice = 0;
+							}
+							$total_amount = $total_amount + ($order_itemsValue['quantity'] * $pizzaPrice);
+						}
+	
+						$order_data = array(
+							'customer_name' => $input['customer_name'],
+							'customer_address' => $input['customer_address'],
+							'customer_mobile' => $input['customer_mobile'],
+							'total_quantity' => $total_quantity,
+							'total_amount' => $total_amount,
+							'order_status' => 'Pending',
 						);
-						Order_items::insert($item_data);
+	
+						Order_master::insert($order_data);
+						$order_id = DB::getPdo()->lastInsertId();
+	
+						foreach ($order_items as $order_itemsValue) {
+							$pizza = Pizza_attribute::where('id',$order_itemsValue['pizza_attr_id'])->get()->toArray();
+							if (is_array($pizza) && count($pizza) > 0) {
+								$pizzaPrice = $pizza[0]['price'];
+							}else{
+								$pizzaPrice = 0;
+							}
+							$item_data = array(
+								'order_id' => $order_id,
+								'pizza_id' => $order_itemsValue['pizza_id'],
+								'pizza_attr_id' => $order_itemsValue['pizza_attr_id'],
+								'quantity' => $order_itemsValue['quantity'],
+								'amount' => $pizzaPrice
+							);
+							Order_items::insert($item_data);
+						}
+						return response()->json(["meta" => ["status" => 'success',"message" => 'Order added successfully'],"data" => array('order_id'=>$order_id)], 200);
+					}else{
+						return response()->json(["meta" => ["status" => 'success',"message" => 'Order not added'],"data" => []], 200);
 					}
-					return response()->json(["meta" => ["status" => 'success',"message" => 'Order added successfully'],"data" => array('order_id'=>$order_id)], 200);
+				}else{
+					return response()->json(["meta" => ["status" => 'success',"message" => 'Order not added'],"data" => []], 200);
 				}
 			}
 		}catch(\Exception $ex) {
@@ -67,8 +83,7 @@ class OrderController extends Controller {
 		}
 	}
 	
-
-	public function update(Request $request) {
+	public function update(Request $request): JsonResponse {
 		try{
 			$input = $request->all();
 			$validator = Validator::make($input,['order_id'=>'required','order_status'=>'required']);
@@ -86,7 +101,7 @@ class OrderController extends Controller {
 		}
 	}
 	
-	public function delete(Request $request) {
+	public function delete(Request $request): JsonResponse {
 		try{
 			$input = $request->all();
 			$validator = Validator::make($input,['order_id'=>'required']);
@@ -97,7 +112,7 @@ class OrderController extends Controller {
 			}else {
 				$order_id = $request->input('order_id');
 				$order = Order_master::where('id', $order_id)->get()->toArray();
-				if(!empty($order)) {
+				if (is_array($order) && count($order) > 0) {
 					if ($order[0]['order_status'] == 'Delivered') {
 						Order_master::where('id', $order_id)->delete();
 						return response()->json(["meta" => ["status" => 'success',"message" => 'Order removed successfully'],"data" => [] ], 200);
@@ -114,7 +129,7 @@ class OrderController extends Controller {
 		}
 	}
 
-	public function get(Request $request) {
+	public function get(Request $request): JsonResponse {
 		try{
 			$input = $request->all();
 			$validator = Validator::make($input,['order_id'=>'required']);
@@ -136,7 +151,7 @@ class OrderController extends Controller {
 		}
 	}
 
-	public function getList(Request $request) {
+	public function getList(Request $request): JsonResponse {
 		try{
 			$input = $request->all();
 			$orderdata = new Order_master();

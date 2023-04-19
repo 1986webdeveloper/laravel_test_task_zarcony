@@ -8,10 +8,11 @@ use App\Models\User;
 // use JWTAuth;
 use Tymon\JWTAuth\Facades\JWTAuth;
 use Tymon\JWTAuth\Exceptions\JWTException;
+use Illuminate\Http\JsonResponse;
 
 class UserController extends Controller 
 {
-    public function authenticate(Request $request) {
+    public function authenticate(Request $request): JsonResponse {
         $credentials = $request->only('email', 'password');
         try {
             if (! $token = JWTAuth::attempt($credentials)) {
@@ -23,8 +24,7 @@ class UserController extends Controller
         return response()->json(compact('token'));
     }
 
-    public function register(Request $request)
-    {
+    public function register(Request $request): JsonResponse{
         $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users',
@@ -38,11 +38,12 @@ class UserController extends Controller
         $user = User::create([
             'name' => $request->get('name'),
             'email' => $request->get('email'),
-            'password' => Hash::make($request->get('password')),
+            'password' => Hash::make(strval($request->get('password'))),
         ]);
 
         $token = JWTAuth::fromUser($user);
 
         return response()->json(compact('user','token'),201);
     }
+    
 }

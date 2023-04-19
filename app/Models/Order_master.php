@@ -10,6 +10,10 @@ class Order_master extends Model
     use SoftDeletes;
 
     protected $table = "order_master";
+
+    /**
+     * @var array
+     */
     protected $dates = ['deleted_at'];
 
     public $fillable = ['customer_name', 'customer_address', 'customer_mobile', 'total_quantity', 'total_amount', 'order_status'];
